@@ -1,0 +1,2 @@
+networks/*
+!networks/config.toml.example
