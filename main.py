@@ -6,8 +6,14 @@ import os
 import re
 from functools import partial
 import flask
+from dotenv import load_dotenv
+
 
 app = flask.Flask(__name__)
+NETWORKS = []
+
+apis_dir = "config/apis/"
+networks_dir = "config/networks/"
 
 
 class Token:
@@ -18,6 +24,14 @@ class Token:
 
 
 class Network:
+    """
+    we have config/apis and config/networks
+    config/apis contains the api calls that we can make for each explorer and each network that explorer supports
+    config/networks contains the network name, endpoint, api key, coin symbol, and tokens for each network
+    we need to create a Network class that can load the config file for each network and create functions for each api call
+    that we can make for that network
+    """
+
     def __init__(self, network_name, endpoint, api_key, coin_symbol, tokens):
         self.network_name = network_name
         self.endpoint = endpoint
@@ -25,12 +39,11 @@ class Network:
         self.coin_symbol = coin_symbol
         self.tokens = tokens
 
-    def load_etherscan_config(self):
-        config_file = "apis/ethereum/etherscan.toml"
+    def load_config(self, config_file):
         config = toml.load(config_file)
         return config
 
-    def create_function_from_config(self, config):
+    def create_functions_from_apis_config(self, config):
         funcs = {}
         for key in config["api_calls"]:
             value = config["api_calls"][key]
@@ -56,15 +69,55 @@ class Network:
         return partial(f, url)
 
 
-NETWORKS = []
 
 
-for file in os.listdir("networks"):
-    if file.endswith(".toml"):
-        data = toml.load(f"networks/{file}")
+@app.route("/docs", methods=["GET"])
+def docs():
+    return flask.jsonify(
+        {
+            "endpoints": {
+                f"/{network.network_name}/{api_call}": f"{api_call}"
+                for network in NETWORKS
+                for api_call in network.create_functions_from_apis_config(
+                    network.load_config(f"{networks_dir}/{network.network_name}.toml")
+                )
+            }
+        }
+    )
+
+
+@app.route("/<network_name>/<api_call>")
+def api_call(network_name, api_call):
+    init_networks()
+
+    network = next((n for n in NETWORKS if n.network_name == network_name), None)
+    if network is None or not os.path.exists(f"{networks_dir}/{network_name}.toml"):
+        return "Network not found", 404
+
+    explorers = os.listdir(f"{apis_dir}{network_name}")
+
+    for explorer in explorers:
+        if not os.path.exists(f"{apis_dir}{network_name}/{explorer}"):
+            continue
+        config = network.load_config(f"{apis_dir}{network_name}/{explorer}")
+
+    if api_call not in config["api_calls"].keys():
+        return "Api call not found", 404
+
+    functions = network.create_functions_from_apis_config(config)
+
+    return functions[api_call](**flask.request.args)
+
+
+def init_networks():
+    load_dotenv()
+
+    for file in os.listdir(networks_dir):
+        data = toml.load(f"{networks_dir}/{file}")
         tokens = []
         for token in data["tokens"]:
             tokens.append(Token(token["name"], token["symbol"], token["address"]))
+        data["api_key"] = os.getenv(data["api_key"])
         NETWORKS.append(
             Network(
                 data["network_name"],
@@ -77,52 +130,8 @@ for file in os.listdir("networks"):
 
 
 def main():
-    # for network in NETWORKS:
-    #     # for token in network.tokens:
-    #     #     x = network.get_native_balance(token.address)
-    #     addr = "0x9dd134d14d1e65f84b706d6f205cd5b1cd03a46b"
-    #     import json
-
-    #     z = network.load_etherscan_config()
-    #     y = network.create_function_from_config(z)
-    #     # r = y["get_balance"](addr)
-    #     r = y["get_gas_price"]()
-
-    #     nodes_count = y["get_nodes_count"]()
-
-    #     print(json.dumps(r, indent=4))
-    #     print(json.dumps(nodes_count, indent=4))
-
+    init_networks()
     app.run(port=5000)
-
-
-@app.route("/docs", methods=["GET"])
-def docs():
-    return flask.jsonify(
-        {
-            "endpoints": {
-                f"/{network.network_name}/{api_call}": f"{api_call}"
-                for network in NETWORKS
-                for api_call in network.create_function_from_config(
-                    network.load_etherscan_config()
-                )
-            }
-        }
-    )
-
-
-@app.route("/<network_name>/<api_call>")
-def api_call(network_name, api_call):
-    network = next((n for n in NETWORKS if n.network_name == network_name), None)
-    if network is None:
-        return "Network not found", 404
-
-    config = network.load_etherscan_config()
-    functions = network.create_function_from_config(config)
-    if api_call not in functions:
-        return "Api call not found", 404
-
-    return functions[api_call](**flask.request.args)
 
 
 if __name__ == "__main__":
