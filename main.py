@@ -1,11 +1,13 @@
 #!/usr/bin/python3
 
 import requests
-import dotenv
 import toml
 import os
+import re
+from functools import partial
+import flask
 
-dotenv.load_dotenv()
+app = flask.Flask(__name__)
 
 
 class Token:
@@ -16,110 +18,42 @@ class Token:
 
 
 class Network:
-    def __init__(self, network_name, api_endpoint, api_key, coin_symbol, tokens):
+    def __init__(self, network_name, endpoint, api_key, coin_symbol, tokens):
         self.network_name = network_name
-        self.api_endpoint = api_endpoint
+        self.endpoint = endpoint
         self.api_key = api_key
         self.coin_symbol = coin_symbol
         self.tokens = tokens
 
-    def handle_response(self, response, network_name):
-        if response.status_code != 200:
-            raise Exception(f"Error: {response.status_code}")
-        data = response.json()
-        if data["status"] != "1":
-            raise Exception(f"Error: {data['message']}")
-        return data["result"]
+    def load_etherscan_config(self):
+        config_file = "apis/ethereum/etherscan.toml"
+        config = toml.load(config_file)
+        return config
 
-    def get_block_number(self):
-        url = f"{self.api_endpoint}?module=proxy&action=eth_blockNumber&apikey={self.api_key}"
-        return self.handle_response(requests.get(url), self.network_name)
+    def create_function_from_config(self, config):
+        funcs = {}
+        for key in config["api_calls"]:
+            value = config["api_calls"][key]
+            matches = re.findall(r"\${network\.(.*?)\}", value)
+            for match in matches:
+                value = value.replace(f"${{network.{match}}}", getattr(self, match))
 
-    def get_native_balance(self, address):
-        url = f"{self.api_endpoint}?module=account&action=balance&address={address}&tag=latest&apikey={self.api_key}"
-        print(url)
-        return self.handle_response(requests.get(url), self.network_name)
+            funcs[key] = self.create_function(value)
+        return funcs
 
-    def get_token_balance(self, address, token_address):
-        url = f"{self.api_endpoint}?module=account&action=tokenbalance&contractaddress={token_address}&address={address}&tag=latest&apikey={self.api_key}"
-        return self.handle_response(requests.get(url), self.network_name)
+    def create_function(self, url):
 
-    def get_tokens_balance(self, address):
-        balances = {}
-        for token in self.tokens:
-            balances[token.symbol] = self.get_token_balance(address, token.address)
-        return balances
+        def f(url, *args, **kwargs):
+            for key in kwargs:
+                url = url.replace(f"$[{key}]", kwargs[key])
 
-    def get_native_balance_multi(self, addresses):
-        url = f"{self.api_endpoint}?module=account&action=balancemulti&address={','.join(addresses)}&tag=latest&apikey={self.api_key}"
-        return self.handle_response(requests.get(url), self.network_name)
+            matches = re.findall(r"\$.*?\]", url)
+            if matches:
+                print(f"Unresolved variables in url: {matches}")
+            response = requests.get(url)
+            return response.json()
 
-    def get_normal_transactions(self, address, startblock=0, endblock=-1):
-        endblock = endblock if endblock != -1 else self.get_block_number()
-
-        url = f"{self.api_endpoint}?module=account&action=txlist&address={address}&startblock={startblock}&endblock={endblock}&sort=asc&apikey={self.api_key}"
-        transactions = []
-
-        while True:
-            response = self.handle_response(requests.get(url), self.network_name)
-            transactions.extend(response)
-            if len(response) < 10000:
-                break
-            url = f"{self.api_endpoint}?module=account&action=txlist&address={address}&startblock={startblock}&endblock={endblock}&sort=asc&apikey={self.api_key}&offset={len(transactions)}"
-        return transactions
-
-    def get_internal_transactions(self, address, startblock=0, endblock=-1):
-        endblock = endblock if endblock != -1 else self.get_block_number()
-        # This API endpoint returns a maximum of 10000 records only. So we need to handle pagination
-        url = f"{self.api_endpoint}?module=account&action=txlistinternal&address={address}&startblock={startblock}&endblock={endblock}&sort=asc&apikey={self.api_key}"
-        transactions = []
-
-        while True:
-            response = self.handle_response(requests.get(url), self.network_name)
-            transactions.extend(response)
-            if len(response) < 10000:
-                break
-            url = f"{self.api_endpoint}?module=account&action=txlistinternal&address={address}&startblock={startblock}&endblock={endblock}&sort=asc&apikey={self.api_key}&offset={len(transactions)}"
-
-        return transactions
-
-    def get_internal_transactions_by_hash(self, txhash):
-        # This API endpoint returns a maximum of 10000 records only. So we need to handle pagination
-        url = f"{self.api_endpoint}?module=account&action=txlistinternal&txhash={txhash}&apikey={self.api_key}"
-        transactions = []
-
-        while True:
-            response = self.handle_response(requests.get(url), self.network_name)
-            transactions.extend(response)
-            if len(response) < 10000:
-                break
-            url = f"{self.api_endpoint}?module=account&action=txlistinternal&txhash={txhash}&apikey={self.api_key}&offset={len(transactions)}"
-        return transactions
-
-    def get_internal_transactions_by_blockhash(self, blockhash):
-        # This API endpoint returns a maximum of 10000 records only. So we need to handle pagination
-        url = f"{self.api_endpoint}?module=account&action=txlistinternal&blockhash={blockhash}&apikey={self.api_key}"
-        transactions = []
-
-        while True:
-            response = self.handle_response(requests.get(url), self.network_name)
-            transactions.extend(response)
-            if len(response) < 10000:
-                break
-            url = f"{self.api_endpoint}?module=account&action=txlistinternal&blockhash={blockhash}&apikey={self.api_key}&offset={len(transactions)}"
-        return transactions
-
-    def get_internal_transactions_by_block_range(self, startblock=0, endblock=-1):
-        endblock = endblock if endblock != -1 else self.get_block_number()
-        url = f"{self.api_endpoint}?module=account&action=txlistinternal&startblock={startblock}&endblock={endblock}&apikey={self.api_key}"
-        return self.handle_response(requests.get(url), self.network_name)
-
-    def get_erc20_transfers_by_event(
-        self, address, startblock=0, endblock=-1, topic0=None
-    ):
-        endblock = endblock if endblock != -1 else self.get_block_number()
-        url = f"{self.api_endpoint}?module=logs&action=getLogs&fromBlock={startblock}&toBlock={endblock}&address={address}&topic0={topic0}&apikey={self.api_key}"
-        return self.handle_response(requests.get(url), self.network_name)
+        return partial(f, url)
 
 
 NETWORKS = []
@@ -134,7 +68,7 @@ for file in os.listdir("networks"):
         NETWORKS.append(
             Network(
                 data["network_name"],
-                data["api_endpoint"],
+                data["endpoint"],
                 data["api_key"],
                 data["coin_symbol"],
                 tokens,
@@ -143,19 +77,52 @@ for file in os.listdir("networks"):
 
 
 def main():
-    print(NETWORKS)
-    for network in NETWORKS:
-        # for token in network.tokens:
-        #     x = network.get_native_balance(token.address)
-        addr = "0xCBB379347e5ABbfd2dAdB1C20A95d58275805C91"
+    # for network in NETWORKS:
+    #     # for token in network.tokens:
+    #     #     x = network.get_native_balance(token.address)
+    #     addr = "0x9dd134d14d1e65f84b706d6f205cd5b1cd03a46b"
+    #     import json
 
-        z = network.get_internal_transactions(addr, 0, 99999999)
-        import json
+    #     z = network.load_etherscan_config()
+    #     y = network.create_function_from_config(z)
+    #     # r = y["get_balance"](addr)
+    #     r = y["get_gas_price"]()
 
-        # print(json.dumps(z, indent=4))
-        x = network.get_internal_transactions_by_hash(z[0]["hash"])
+    #     nodes_count = y["get_nodes_count"]()
 
-        print(json.dumps(x, indent=4))
+    #     print(json.dumps(r, indent=4))
+    #     print(json.dumps(nodes_count, indent=4))
+
+    app.run(port=5000)
+
+
+@app.route("/docs", methods=["GET"])
+def docs():
+    return flask.jsonify(
+        {
+            "endpoints": {
+                f"/{network.network_name}/{api_call}": f"{api_call}"
+                for network in NETWORKS
+                for api_call in network.create_function_from_config(
+                    network.load_etherscan_config()
+                )
+            }
+        }
+    )
+
+
+@app.route("/<network_name>/<api_call>")
+def api_call(network_name, api_call):
+    network = next((n for n in NETWORKS if n.network_name == network_name), None)
+    if network is None:
+        return "Network not found", 404
+
+    config = network.load_etherscan_config()
+    functions = network.create_function_from_config(config)
+    if api_call not in functions:
+        return "Api call not found", 404
+
+    return functions[api_call](**flask.request.args)
 
 
 if __name__ == "__main__":

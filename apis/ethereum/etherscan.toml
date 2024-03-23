@@ -1,0 +1,75 @@
+# etherscan.toml
+
+# ${...} is a placeholder for config vars
+# $[...] is a placeholder for api params
+
+[mainnet]
+endpoint = "https://api.etherscan.io/api"
+network_name = "Ethereum"
+coin_symbol = "ETH"
+
+[api_calls]
+# account module
+get_balance = "${network.endpoint}?module=account&action=balance&address=$[address]&tag=latest&apikey=${network.api_key}"
+get_balance_multiple = "${network.endpoint}?module=account&action=balancemulti&address=$[addresses]&tag=latest&apikey=${network.api_key}"
+get_transactions_by_address = "${network.endpoint}?module=account&action=txlist&address=$[address]&startblock=0&endblock=99999999&sort=asc&apikey=${network.api_key}"
+get_internal_transactions_by_address = "${network.endpoint}?module=account&action=txlistinternal&address=$[address]&startblock=0&endblock=99999999&sort=asc&apikey=${network.api_key}"
+get_internal_transactions_by_hash = "${network.endpoint}?module=account&action=txlistinternal&txhash=$[tx_hash]&apikey=${network.api_key}"
+get_internal_transactions_by_block_range = "${network.endpoint}?module=account&action=txlistinternal&startblock=$[start_block]&endblock=$[end_block]&sort=asc&apikey=${network.api_key}"
+get_erc20_transfers_by_address = "${network.endpoint}?module=account&action=tokentx&address=$[address]&startblock=0&endblock=99999999&sort=asc&apikey=${network.api_key}"
+get_erc721_transfers_by_address = "${network.endpoint}?module=account&action=tokennfttx&address=$[address]&startblock=0&endblock=99999999&sort=asc&apikey=${network.api_key}"
+get_erc1155_transfers_by_address = "${network.endpoint}?module=account&action=tokennfttx&address=$[address]&startblock=0&endblock=99999999&sort=asc&apikey=${network.api_key}"
+get_validated_blocks_by_address = "${network.endpoint}?module=account&action=getminedblocks&address=$[address]&blocktype=blocks&apikey=${network.api_key}"
+get_beacon_withdraw_address = "${network.endpoint}?module=account&action=txsBeaconWithdrawal&address=$[address]&apikey=${network.api_key}"
+
+# Contract module
+get_contract_abi = "${network.endpoint}?module=contract&action=getabi&address=$[contract_address]&apikey=${network.api_key}"
+get_contract_source_code = "${network.endpoint}?module=contract&action=getsourcecode&address=$[contract_address]&apikey=${network.api_key}"
+get_contract_creator_and_tx_hash = "${network.endpoint}?module=contract&action=getcontractcreation&address=$[cotracts_addresses]&apikey=${network.api_key}"
+
+# Stats module
+get_transaction_status = "${network.endpoint}?module=transaction&action=getstatus&txhash=$[tx_hash]&apikey=${network.api_key}"
+get_transaction_receipt_status = "${network.endpoint}?module=transaction&action=gettxreceiptstatus&txhash=$[tx_hash]&apikey=${network.api_key}"
+
+# Blocks module
+get_block_and_uncle_rewards_by_block_number = "${network.endpoint}?module=block&action=getblockreward&blockno=$[block_number]&apikey=${network.api_key}"
+get_block_countdown = "${network.endpoint}?module=block&action=getblockcountdown&blockno=$[block_number]&apikey=${network.api_key}"
+get_block_number_by_timestamp = "${network.endpoint}?module=block&action=getblocknobytime&timestamp=$[timestamp]&closest=before&apikey=${network.api_key}"
+
+# Logs module
+get_logs_by_address = "${network.endpoint}?module=logs&action=getLogs&fromBlock=0&toBlock=latest&address=$[address]&apikey=${network.api_key}"
+get_logs_by_topic = "${network.endpoint}?module=logs&action=getLogs&fromBlock=0&toBlock=latest&topic0=$[topic]&apikey=${network.api_key}"
+get_logs_by_address_and_topic = "${network.endpoint}?module=logs&action=getLogs&fromBlock=0&toBlock=latest&address=$[address]&topic0=$[topic]&apikey=${network.api_key}"
+
+# proxy/geth module
+get_blocknumber = "${network.endpoint}?module=proxy&action=eth_blockNumber&apikey=${network.api_key}"
+get_block_by_number = "${network.endpoint}?module=proxy&action=eth_getBlockByNumber&tag=$[block_number]&boolean=true&apikey=${network.api_key}"
+get_uncle = "${network.endpoint}?module=proxy&action=eth_getUncleByBlockNumberAndIndex&tag=latest&index=$[uncle_index]&apikey=${network.api_key}"
+get_block_transaction_count_by_number = "${network.endpoint}?module=proxy&action=eth_getBlockTransactionCountByNumber&tag=latest&apikey=${network.api_key}"
+get_transaction = "${network.endpoint}?module=proxy&action=eth_getTransactionByHash&txhash=$[tx_hash]&apikey=${network.api_key}"
+get_transaction_by_block_number_and_index = "${network.endpoint}?module=proxy&action=eth_getTransactionByBlockNumberAndIndex&tag=latest&index=$[tx_index]&apikey=${network.api_key}"
+get_transaction_count = "${network.endpoint}?module=proxy&action=eth_getTransactionCount&address=$[address]&tag=latest&apikey=${network.api_key}"
+get_transaction_receipt = "${network.endpoint}?module=proxy&action=eth_getTransactionReceipt&txhash=$[tx_hash]&apikey=${network.api_key}"
+get_code = "${network.endpoint}?module=proxy&action=eth_getCode&address=$[address]&tag=latest&apikey=${network.api_key}"
+get_storage_at = "${network.endpoint}?module=proxy&action=eth_getStorageAt&address=$[address]&position=$[position]&tag=latest&apikey=${network.api_key}"
+get_gas_price = "${network.endpoint}?module=proxy&action=eth_gasPrice&apikey=${network.api_key}"
+
+# Tokens module
+get_erc20_total_supply = "${network.endpoint}?module=stats&action=tokensupply&contractaddress=$[contract_address]&apikey=${network.api_key}"
+get_erc20_account_balance = "${network.endpoint}?module=account&action=tokenbalance&contractaddress=$[contract_address]&address=$[address]&tag=latest&apikey=${network.api_key}"
+
+# Gas Tracker module
+get_estimation = "${network.endpoint}?module=gastracker&action=gasestimate&gasprice=$[gas_price]&apikey=${network.api_key}"
+get_gas_oracle = "${network.endpoint}?module=gastracker&action=gasoracle&apikey=${network.api_key}"
+
+
+# Stats module
+get_eth_supply = "${network.endpoint}?module=stats&action=ethsupply&apikey=${network.api_key}"
+get_eth2_supply = "${network.endpoint}?module=stats&action=eth2supply&apikey=${network.api_key}"
+get_eth_price = "${network.endpoint}?module=stats&action=ethprice&apikey=${network.api_key}"
+get_nodes_count = "${network.endpoint}?module=stats&action=nodecount&apikey=${network.api_key}"
+
+
+# custom api calls
+
+[custom]
