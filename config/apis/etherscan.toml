@@ -3,11 +3,6 @@
 # ${...} is a placeholder for config vars
 # $[...] is a placeholder for api params
 
-[mainnet]
-endpoint = "https://api.etherscan.io/api"
-network_name = "Ethereum"
-coin_symbol = "ETH"
-
 [api_calls]
 # account module
 get_balance = "${network.endpoint}?module=account&action=balance&address=$[address]&tag=latest&apikey=${network.api_key}"

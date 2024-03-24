@@ -1,11 +1,7 @@
 #!/usr/bin/python3
 
-import requests
-import toml
-import os
-import re
+import requests, toml, os, re, flask
 from functools import partial
-import flask
 from dotenv import load_dotenv
 
 
@@ -24,14 +20,6 @@ class Token:
 
 
 class Network:
-    """
-    we have config/apis and config/networks
-    config/apis contains the api calls that we can make for each explorer and each network that explorer supports
-    config/networks contains the network name, endpoint, api key, coin symbol, and tokens for each network
-    we need to create a Network class that can load the config file for each network and create functions for each api call
-    that we can make for that network
-    """
-
     def __init__(self, network_name, endpoint, api_key, coin_symbol, tokens):
         self.network_name = network_name
         self.endpoint = endpoint
@@ -69,37 +57,34 @@ class Network:
         return partial(f, url)
 
 
-
-
-@app.route("/docs", methods=["GET"])
-def docs():
-    return flask.jsonify(
-        {
+"""
+{
             "endpoints": {
                 f"/{network.network_name}/{api_call}": f"{api_call}"
                 for network in NETWORKS
                 for api_call in network.create_functions_from_apis_config(
-                    network.load_config(f"{networks_dir}/{network.network_name}.toml")
+                    network.load_config(f"{apis_dir}/{network.network_name}.toml")
                 )
             }
         }
-    )
+        """
 
 
 @app.route("/<network_name>/<api_call>")
 def api_call(network_name, api_call):
-    init_networks()
+    # init_networks()
 
     network = next((n for n in NETWORKS if n.network_name == network_name), None)
     if network is None or not os.path.exists(f"{networks_dir}/{network_name}.toml"):
         return "Network not found", 404
 
-    explorers = os.listdir(f"{apis_dir}{network_name}")
+    explorers = os.listdir(apis_dir)
 
     for explorer in explorers:
-        if not os.path.exists(f"{apis_dir}{network_name}/{explorer}"):
+        if not os.path.exists(f"{apis_dir}/{explorer}"):
+            print("not exist")
             continue
-        config = network.load_config(f"{apis_dir}{network_name}/{explorer}")
+        config = network.load_config(f"{apis_dir}/{explorer}")
 
     if api_call not in config["api_calls"].keys():
         return "Api call not found", 404
@@ -107,6 +92,32 @@ def api_call(network_name, api_call):
     functions = network.create_functions_from_apis_config(config)
 
     return functions[api_call](**flask.request.args)
+
+
+@app.route("/docs", methods=["GET"])
+def docs():
+
+    endpoints = []
+    for network in NETWORKS:
+        explorers = os.listdir(apis_dir)
+        print("Z")
+
+        for explorer in explorers:
+            if not os.path.exists(f"{apis_dir}/{explorer}"):
+                print("not exist")
+                continue
+            config = network.load_config(f"{apis_dir}/{explorer}")
+        for key in config["api_calls"]:
+            endpoints.append(
+                {
+                    "network": network.network_name,
+                    "explorer": explorer,
+                    "api_call": key,
+                    "url": config["api_calls"][key],
+                }
+            )
+
+    return flask.jsonify(endpoints)
 
 
 def init_networks():
@@ -129,8 +140,11 @@ def init_networks():
         )
 
 
+init_networks()
+
+
 def main():
-    init_networks()
+    # init_networks()
     app.run(port=5000)
 
 
