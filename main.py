@@ -1,12 +1,13 @@
 #!/usr/bin/python3
 
-import requests, toml, os, re, flask
-from functools import partial
+import toml
+import os
+import re
+import flask
+import functools
 from dotenv import load_dotenv
 
-
 app = flask.Flask(__name__)
-NETWORKS = []
 
 apis_dir = "config/apis/"
 networks_dir = "config/networks/"
@@ -19,132 +20,119 @@ class Token:
         self.address = address
 
 
-class Network:
-    def __init__(self, network_name, endpoint, api_key, coin_symbol, tokens):
-        self.network_name = network_name
-        self.endpoint = endpoint
-        self.api_key = api_key
-        self.coin_symbol = coin_symbol
-        self.tokens = tokens
-
-    def load_config(self, config_file):
-        config = toml.load(config_file)
-        return config
-
-    def create_functions_from_apis_config(self, config):
-        funcs = {}
-        for key in config["api_calls"]:
-            value = config["api_calls"][key]
-            matches = re.findall(r"\${network\.(.*?)\}", value)
-            for match in matches:
-                value = value.replace(f"${{network.{match}}}", getattr(self, match))
-
-            funcs[key] = self.create_function(value)
-        return funcs
-
-    def create_function(self, url):
-
-        def f(url, *args, **kwargs):
-            for key in kwargs:
-                url = url.replace(f"$[{key}]", kwargs[key])
-
-            matches = re.findall(r"\$.*?\]", url)
-            if matches:
-                print(f"Unresolved variables in url: {matches}")
-            response = requests.get(url)
-            return response.json()
-
-        return partial(f, url)
+def load_config(config_file):
+    config = toml.load(config_file)
+    return config
 
 
-"""
-{
-            "endpoints": {
-                f"/{network.network_name}/{api_call}": f"{api_call}"
-                for network in NETWORKS
-                for api_call in network.create_functions_from_apis_config(
-                    network.load_config(f"{apis_dir}/{network.network_name}.toml")
-                )
-            }
+def create_function(url, method):
+
+    def f(url, *args, **kwargs):
+
+        for key in kwargs:
+            url = url.replace(f"$[{key}]", kwargs[key])
+
+        headers = {
+            "Content-Type": "application/json",
         }
-        """
+        if method == "POST":
+            matches = re.findall(r"<%.*?%>", url)
+            for match in matches:
+                url = url.replace(match, "")
+            matches = [match[2:-2] for match in matches]
+            kwargs = flask.json.loads([match for match in matches][0])
+
+            response = requests.post(url, headers=headers, json=kwargs)
+        else:
+            response = requests.get(url)
+        return response.json()
+
+    return functools.partial(f, url, method)
+
+
+def create_function_from_apis_config(network, config):
+    funcs = {}
+    for key in config["api_calls"]:
+        value = config["api_calls"][key]
+        matches = re.findall(r"\${network\.(.*?)\}", value)
+        for match in matches:
+            value = value.replace(
+                f"${{network.{match}}}",
+                network.get(match),
+            )
+        method = config["metadata"]["method"]
+
+        funcs[key] = create_function(value, method)
+
+    return funcs
 
 
 @app.route("/<network_name>/<api_call>")
 def api_call(network_name, api_call):
-    # init_networks()
 
-    network = next((n for n in NETWORKS if n.network_name == network_name), None)
-    if network is None or not os.path.exists(f"{networks_dir}/{network_name}.toml"):
-        return "Network not found", 404
+    load_dotenv()
 
-    explorers = os.listdir(apis_dir)
+    networks_config = load_config(f"{networks_dir}/{network_name}.toml")
+
+    explorers = networks_config["explorers"]
+
+    tokens = networks_config["tokens"]
 
     for explorer in explorers:
-        if not os.path.exists(f"{apis_dir}/{explorer}"):
-            print("not exist")
-            continue
-        config = network.load_config(f"{apis_dir}/{explorer}")
+        explorer_config = load_config(f"{apis_dir}/{explorer['explorer_name']}.toml")
 
-    if api_call not in config["api_calls"].keys():
-        return "Api call not found", 404
+        network_config = {
+            "explorer": explorer,
+            "tokens": tokens,
+            "api_calls": explorer_config["api_calls"],
+            "api_key": os.getenv(explorer["api_key"]),
+            "coin_symbol": explorer["coin_symbol"],
+            "endpoint": explorer["endpoint"],
+        }
 
-    functions = network.create_functions_from_apis_config(config)
+        funcs = create_function_from_apis_config(network_config, explorer_config)
+        if api_call in funcs:
+            return funcs[api_call](**flask.request.args)
+            # return funcs[api_call](**flask.request.args.to_dict())
 
-    return functions[api_call](**flask.request.args)
+    return "API call not found"
 
 
 @app.route("/docs", methods=["GET"])
 def docs():
 
-    endpoints = []
-    for network in NETWORKS:
-        explorers = os.listdir(apis_dir)
-        print("Z")
+    networks = os.listdir(networks_dir)
+    networks = [network.split(".")[0] for network in networks]
 
-        for explorer in explorers:
-            if not os.path.exists(f"{apis_dir}/{explorer}"):
-                print("not exist")
-                continue
-            config = network.load_config(f"{apis_dir}/{explorer}")
-        for key in config["api_calls"]:
+    return flask.jsonify(networks)
+
+
+@app.route("/docs/<network_name>", methods=["GET"])
+def docs_network(network_name):
+
+    networks_config = load_config(f"{networks_dir}/{network_name}.toml")
+
+    explorers = networks_config["explorers"]
+
+    endpoints = []
+    for explorer in explorers:
+        explorer_config = load_config(f"{apis_dir}/{explorer['explorer_name']}.toml")
+        for key in explorer_config["api_calls"]:
+            params = re.findall(r"\$\[(.*?)\]", explorer_config["api_calls"][key])
             endpoints.append(
                 {
-                    "network": network.network_name,
-                    "explorer": explorer,
+                    "network": network_name,
+                    "explorer": explorer["explorer_name"],
                     "api_call": key,
-                    "url": config["api_calls"][key],
+                    "url": explorer_config["api_calls"][key],
+                    "params": params,
                 }
             )
 
     return flask.jsonify(endpoints)
 
 
-def init_networks():
-    load_dotenv()
-
-    for file in os.listdir(networks_dir):
-        data = toml.load(f"{networks_dir}/{file}")
-        tokens = []
-        for token in data["tokens"]:
-            tokens.append(Token(token["name"], token["symbol"], token["address"]))
-        data["api_key"] = os.getenv(data["api_key"])
-        NETWORKS.append(
-            Network(
-                data["network_name"],
-                data["endpoint"],
-                data["api_key"],
-                data["coin_symbol"],
-                tokens,
-            )
-        )
-
-
-init_networks()
-
-
 def main():
-    # init_networks()
     app.run(port=5000)
 
 

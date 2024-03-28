@@ -1,0 +1,12 @@
+# blockscout.toml
+
+# ${...} is a placeholder for config vars
+# $[...] is a placeholder for api params
+# <%...%> is a placeholder for api post params
+
+[metadata]
+explorer_name = "blockscout"
+method = "POST"
+
+[api_calls]
+eth_blockNumber = '${network.endpoint}<%{"id":0,"jsonrpc":"2.0","method":"eth_blockNumber","params":[]}%>'

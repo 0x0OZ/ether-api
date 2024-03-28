@@ -1,7 +1,29 @@
-network_name = "optimism"
-endpoint = "https://api-optimistic.etherscan.io/api"
-api_key = "OPTIMISM_ETHERSCAN_API_KEY"             # loaded from .env
+
+
+[[explorers]]
+explorer_name = "etherscan"
+network_name = "ethereum"
+endpoint = "https://api.etherscan.io/api"
+api_key = "ETHEREUM_ETHERSCAN_API_KEY" # loaded from .env
 coin_symbol = "ETH"
+
+[[explorers]]
+explorer_name = "blockscout"
+network_name = "ethereum"
+endpoint = "https://eth.blockscout.com/api/eth-rpc"
+api_key = "ETHEREUM_BLOCKSCOUT_API_KEY"     # loaded from .env
+coin_symbol = "ETH"
+
+# [[explorers]]
+# name = "ethplorer"
+# endpoint = "https://api.ethplorer.io"
+# api_key = ""
+# coin_symbol = "ETH"
+# network_name = "ethereum"
+# endpoint = "https://api.etherscan.io/api"
+# api_key = "ETHEREUM_ETHERSCAN_API_KEY"    # loaded from .env
+# coin_symbol = "ETH"
+
 
 [[tokens]]
 name = "Tether USD"

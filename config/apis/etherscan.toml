@@ -2,6 +2,12 @@
 
 # ${...} is a placeholder for config vars
 # $[...] is a placeholder for api params
+# <%...%> is a placeholder for api post params
+
+[metadata]
+explorer_name = "etherscan"
+method = "GET"
+
 
 [api_calls]
 # account module
