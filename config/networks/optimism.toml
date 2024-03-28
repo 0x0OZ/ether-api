@@ -3,14 +3,12 @@
 
 [[explorers]]
 explorer_name = "etherscan"
-network_name = "optimism"
 endpoint = "https://api-optimistic.etherscan.io/api"
 api_key = "OPTIMISM_ETHERSCAN_API_KEY"                # loaded from .env
 coin_symbol = "ETH"
 
 [[explorers]]
 explorer_name = "blockscout"
-network_name = "optimism"
 endpoint = "https://optimism.blockscout.com/api/eth-rpc"
 api_key = "ETHEREUM_BLOCKSCOUT_API_KEY"     # loaded from .env
 coin_symbol = "ETH"

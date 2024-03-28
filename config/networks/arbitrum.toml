@@ -1,0 +1,12 @@
+[[explorers]]
+explorer_name = "etherscan"
+endpoint = "https://api.arbiscan.io/api"
+api_key = "ARBITRUM_ETHERSCAN_API_KEY"        # loaded from .env
+coin_symbol = "ETH"
+
+
+
+[[tokens]]
+token_name = "DAI"
+token_symbol = "DAI"
+token_address = "0x50c5725949a6f0c72e6c4a641f24049a917db0cb"
