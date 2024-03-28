@@ -5,6 +5,7 @@ import os
 import re
 import flask
 import functools
+import requests
 from dotenv import load_dotenv
 
 app = flask.Flask(__name__)
