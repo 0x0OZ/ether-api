@@ -1,0 +1,11 @@
+[[explorers]]
+explorer_name = "etherscan"
+endpoint = "https://api.polygonscan.com/api"
+api_key = "POLYGON_ETHERSCAN_API_KEY"   # loaded from .env
+coin_symbol = "ETH"
+
+
+[[tokens]]
+token_name = "(PoS) Tether USD (USDT)"
+token_symbol = "USDT"
+token_address = "0xc2132D05D31c914a87C6611C10748AEb04B58e8F"

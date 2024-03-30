@@ -1,9 +1,8 @@
 [[explorers]]
 explorer_name = "etherscan"
 endpoint = "https://api.arbiscan.io/api"
-api_key = "ARBITRUM_ETHERSCAN_API_KEY"        # loaded from .env
-coin_symbol = "ETH"
-
+api_key = "ARBITRUM_ETHERSCAN_API_KEY"   # loaded from .env
+coin_symbol = "ARB"
 
 
 [[tokens]]

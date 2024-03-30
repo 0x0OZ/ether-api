@@ -1,0 +1,11 @@
+[[explorers]]
+explorer_name = "etherscan"
+endpoint = "https://api-zkevm.polygonscan.com/api"
+api_key = "ZK_POLYGON_ETHERSCAN_API_KEY"   # loaded from .env
+coin_symbol = "ETH"
+
+
+[[tokens]]
+token_name = "Tether USD (USDT)"
+token_symbol = "USDT"
+token_address = "0x1E4a5963aBFD975d8c9021ce480b42188849D41d"
