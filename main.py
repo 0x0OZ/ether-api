@@ -45,6 +45,7 @@ def create_function(url, method):
 
             response = requests.post(url, headers=headers, json=kwargs)
         else:
+            print("url", url)
             response = requests.get(url)
         return response.json()
 
@@ -96,14 +97,49 @@ def api_call(network_name, api_call):
             return funcs[api_call](**flask.request.args)
             # return funcs[api_call](**flask.request.args.to_dict())
 
-    return "API call not found"
+    return flask.jsonify({"error": "API call not found"})
+
+
+@app.route("/<network_name>/<api_call>/params", methods=["GET"])
+def api_call_params(network_name, api_call):
+
+    load_dotenv()
+
+    networks_config = load_config(f"{networks_dir}/{network_name}.toml")
+
+    explorers = networks_config["explorers"]
+
+    tokens = networks_config["tokens"]
+
+    for explorer in explorers:
+        explorer_config = load_config(f"{apis_dir}/{explorer['explorer_name']}.toml")
+
+        network_config = {
+            "explorer": explorer,
+            "tokens": tokens,
+            "api_calls": explorer_config["api_calls"],
+            "api_key": os.getenv(explorer["api_key"]),
+            "coin_symbol": explorer["coin_symbol"],
+            "endpoint": explorer["endpoint"],
+        }
+
+        funcs = create_function_from_apis_config(network_config, explorer_config)
+        if api_call in funcs:
+            # each param is under $[..] in the url
+            params = re.findall(r"\$\[(.*?)\]", explorer_config["api_calls"][api_call])
+            return flask.jsonify(params)
+
+    return flask.jsonify({"error": "API call not found"})
 
 
 @app.route("/docs", methods=["GET"])
 def docs():
 
     networks = os.listdir(networks_dir)
-    networks = [network.split(".")[0] for network in networks]
+    networks = [
+        flask.request.base_url + "/docs/" + network.split(".")[0]
+        for network in networks
+    ]
 
     return flask.jsonify(networks)
 
