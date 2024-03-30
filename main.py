@@ -100,38 +100,6 @@ def api_call(network_name, api_call):
     return flask.jsonify({"error": "API call not found"})
 
 
-@app.route("/<network_name>/<api_call>/params", methods=["GET"])
-def api_call_params(network_name, api_call):
-
-    load_dotenv()
-
-    networks_config = load_config(f"{networks_dir}/{network_name}.toml")
-
-    explorers = networks_config["explorers"]
-
-    tokens = networks_config["tokens"]
-
-    for explorer in explorers:
-        explorer_config = load_config(f"{apis_dir}/{explorer['explorer_name']}.toml")
-
-        network_config = {
-            "explorer": explorer,
-            "tokens": tokens,
-            "api_calls": explorer_config["api_calls"],
-            "api_key": os.getenv(explorer["api_key"]),
-            "coin_symbol": explorer["coin_symbol"],
-            "endpoint": explorer["endpoint"],
-        }
-
-        funcs = create_function_from_apis_config(network_config, explorer_config)
-        if api_call in funcs:
-            # each param is under $[..] in the url
-            params = re.findall(r"\$\[(.*?)\]", explorer_config["api_calls"][api_call])
-            return flask.jsonify(params)
-
-    return flask.jsonify({"error": "API call not found"})
-
-
 @app.route("/docs", methods=["GET"])
 def docs():
 
@@ -169,9 +137,34 @@ def docs_network(network_name):
     return flask.jsonify(endpoints)
 
 
-def main():
-    app.run(port=5000)
+@app.route("/docs/<network_name>/<api_call>", methods=["GET"])
+def docs_network_api_call(network_name, api_call):
 
+    networks_config = load_config(f"{networks_dir}/{network_name}.toml")
+
+    explorers = networks_config["explorers"]
+
+    endpoints = []
+    for explorer in explorers:
+        explorer_config = load_config(f"{apis_dir}/{explorer['explorer_name']}.toml")
+        if api_call in explorer_config["api_calls"]:
+            params = re.findall(r"\$\[(.*?)\]", explorer_config["api_calls"][api_call])
+            endpoints.append(
+                {
+                    "network": network_name,
+                    "explorer": explorer["explorer_name"],
+                    "api_call": api_call,
+                    "url": explorer_config["api_calls"][api_call],
+                    "params": params,
+                }
+            )
+
+    return flask.jsonify(endpoints)
+
+
+def main():
+    print("Server started on port 5000")
+    app.run(port=5000)
+    
 
 if __name__ == "__main__":
-    main()

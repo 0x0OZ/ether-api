@@ -12,7 +12,7 @@ After running the server, you can access the api at `http://localhost:5000/docs`
 
 Copy the `.env.example` file to `.env` and fill in the required values. Then run the following command:
 ```bash
-flask --app main.py run --host=127.0.0.1 --port=5000
+gunicorn main:app -b :80
 ```
 
 ## How to extend it?
