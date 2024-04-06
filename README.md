@@ -6,7 +6,9 @@ This api lets you interact with different blockchain networks and different expl
 
 ## How to use it?
 
-After running the server, you can access the api at `http://localhost:5000/docs`. This will show you the swagger documentation, where you can see all the available endpoints and try them out.
+After running the server, 
+
+you can access the api at `http://localhost:5000/docs`. This will show you the swagger documentation, where you can see all the available endpoints and try them out.
 
 ## How to run it?
 
@@ -14,6 +16,9 @@ Copy the `.env.example` file to `.env` and fill in the required values. Then run
 ```bash
 gunicorn main:app -b :80
 ```
+
+[Demo Video](https://github.com/0x0OZ/ether-api/assets/52073989/236cc703-6a53-450a-9d76-ce35c969ad22)
+
 
 ## How to extend it?
 
